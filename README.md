@@ -1,67 +1,44 @@
 # Value Stream Mapping Skill
 
-Interactive Value Stream Mapping (VSM) skill for AI agents (HermesAgent / OpenClaw). Based on Mike Rother's *Learning to See* methodology.
+A Hermes Agent skill for interactive Value Stream Mapping (VSM) — replacing the traditional pen-and-paper process with structured chat-based analysis.
 
-## What It Does
+## Features
 
-Guides an interactive 6-step Lean consulting workflow through chat:
+- **Current State Mapping:** Extract process data from conversation, validate, and render Mermaid diagrams
+- **Lean Calculations:** Takt Time, Lead Time, Value Add Ratio, bottleneck detection
+- **Future State Design:** Walk through Mike Rother's 8 questions systematically
+- **Action Plan:** Prioritized improvement plan with expected impact quantification
+- **Data Validation:** Automatic contradiction detection (C/T > Takt, inventory inconsistencies, etc.)
+- **Feishu Optimized:** Mermaid conventions tuned for Lark/Feishu rendering
 
-1. **Scope Definition** — Define map boundary and product family
-2. **Current State Extraction** — Collect process steps and metrics (C/T, C/O, Uptime, Inventory...)
-3. **Current State Rendering** — Generate Mermaid VSM diagram + data boxes + time line
-4. **Future State Analysis** — Mike Rother's 8 questions, bottleneck identification, improvement planning
-5. **Future State Rendering** — Revised diagram with Kaizen Burst markers + before/after comparison
-6. **Improvement Action Plan** — Prioritized action list with Lean tool recommendations
+## Files
 
-## Supported Calculations
-
-- **Takt Time** — multi-shift aware
-- **Lead Time** — inventory wait + processing time
-- **Value Add Ratio** — key improvement metric
-- **Bottleneck Detection** — C/T vs Takt Time
+```
+SKILL.md                          # Main workflow (6-step process)
+references/
+  lean-analysis.md                # Calculation engine + Rother's 8 questions + validation rules
+  mermaid-vsm-patterns.md         # Mermaid syntax conventions + rendering guidelines + examples
+```
 
 ## Install
 
+Clone into your Hermes skills directory:
 ```bash
-# HermesAgent
-hermes skills install Feng-H/value-stream-mapping-skill
-
-# OpenClaw
-clawhub install value-stream-mapping-skill
-
-# Manual
-git clone https://github.com/Feng-H/value-stream-mapping-skill.git
-cp -r value-stream-mapping-skill ~/.hermes/skills/
+mkdir -p ~/.hermes/skills/operations
+git clone https://github.com/Feng-H/value-stream-mapping-skill.git ~/.hermes/skills/operations/value-stream-mapping
 ```
 
-## File Structure
+## Usage
 
-```
-├── SKILL.md                        # Skill definition (agentskills.io standard)
-└── references/
-    ├── lean-analysis.md            # Lean calculations + 8 questions
-    └── mermaid-vsm-patterns.md     # Mermaid rendering conventions + examples
-```
+Just describe your manufacturing process to the agent. Example prompts:
 
-## Example Output
+- "帮我画一个钢结构支架产线的价值流图"
+- "我们产线有5道工序，日需求500件，帮我做VSM分析"
+- "分析一下这个产线的瓶颈在哪里"
 
-```
-Customer ─── 月需求:18400 ───→ [Production Plan] ─── 周排产 ───→ Stamping
-                                                                        │
-                                                                       WIP:100
-                                                                        │
-                                                                        ▼
-Welding ──── 看板:200 ────→ Assembly ──── → Customer
+The agent will guide you through data collection, rendering, and improvement planning.
 
-| Process   | C/T  | C/O   | Uptime | Bottleneck |
-|-----------|------|-------|--------|------------|
-| Stamping  | 45s  | 1 hr  | 85%    | ✗          |
-| Welding   | 62s  | 30min | 90%    | ✓ (C/T>Takt)|
-| Assembly  | 40s  | 10min | 95%    | ✗          |
+## Version History
 
-Value Add Ratio: 0.05% | Lead Time: 3.25 days
-```
-
-## License
-
-MIT
+- **2.1.0** — Fixed example data inconsistency, FIFO/Transport syntax, added effective C/T, mixed-model guidance, diagram complexity management, priority scoring
+- **2.0.0** — Initial structured version with Mermaid rendering and Rother's 8 questions
