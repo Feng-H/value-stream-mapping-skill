@@ -1,19 +1,38 @@
 ---
 name: value-stream-mapping
-version: 2.1.0
-description: Draw, create, and analyze Value Stream Maps (VSM) interactively. Use when a user wants to map a process, find bottlenecks, calculate Takt Time, or design a Future State Map based on Lean principles.
-tags: [lean, vsm, value-stream, manufacturing, process-optimization, mermaid]
+version: 3.0.0
+description: Draw, create, and analyze Value Stream Maps (VSM) with professional SVG rendering. Use when a user wants to map a process, find bottlenecks, calculate Takt Time, or design a Future State Map based on Lean principles.
+tags: [lean, vsm, value-stream, manufacturing, process-optimization, svg]
 category: operations
 linked_files:
   - references/lean-analysis.md
-  - references/mermaid-vsm-patterns.md
+  - references/svg-rendering.md
+  - scripts/vsm_svg.py
 ---
 
 # Value Stream Mapping Skill
 
-This skill guides you to act as an expert Lean Consultant, replacing the traditional pen-and-paper Value Stream Mapping process.
+This skill guides you to act as an expert Lean Consultant, producing professional Value Stream Maps with standard Lean icons (process data boxes, inventory triangles, timeline bars, Kaizen bursts) rendered as SVG.
 
-> **Limitation:** Mermaid flowcharts are a simplified representation of VSM. Real VSMs use standardized icons (process boxes, triangles for inventory, etc.). This skill optimizes for Feishu/Lark chat rendering — prioritize clarity over visual fidelity.
+## Rendering Engine
+
+VSM diagrams are generated via `scripts/vsm_svg.py` — a zero-dependency Python script that outputs SVG files.
+
+**Before rendering (Step 3 and Step 5), you MUST:**
+1. Read `references/svg-rendering.md` for the SVG conventions and visual elements
+2. Read `references/lean-analysis.md` for Takt Time, Lead Time, and Value Add Ratio formulas
+
+**To generate a VSM:**
+```bash
+python3 scripts/vsm_svg.py input.json output.svg
+rsvg-convert -w 1775 output.svg -o output.png
+```
+
+The input JSON structure is documented in `references/svg-rendering.md`.
+
+**IMPORTANT:** Feishu does not support SVG attachments. Always convert to PNG with `rsvg-convert` before sending via `MEDIA:`. Dependency: `librsvg2-bin` (`sudo apt-get install -y librsvg2-bin`).
+
+**User preference:** Do not over-verify SVG output programmatically. Generate, convert to PNG, send to user. They will visually inspect and provide feedback.
 
 ## Workflow
 
@@ -24,7 +43,7 @@ Ask the user to define the scope of the map (e.g., door-to-door, single line, mu
 
 ### 2. Current State Extraction
 
-**First, collect demand and time parameters** — these are needed for Takt Time and cannot be calculated later:
+**First, collect demand and time parameters** — these are needed for Takt Time:
 - Monthly/weekly/daily demand
 - Working days per month
 - Shifts per day and net available time per shift (exclude breaks/lunch)
@@ -39,11 +58,13 @@ Ask the user to define the scope of the map (e.g., door-to-door, single line, mu
 
 ### 3. Current State Rendering
 
-Generate a Mermaid diagram mapping the flow, followed immediately by a Markdown Data Box table and a Time Line summary.
-- **CRITICAL:** Use the conventions in `references/mermaid-vsm-patterns.md`. You must read this file before generating the Mermaid.
-- **CRITICAL:** Use the calculations in `references/lean-analysis.md`. You must read this file for Takt Time, Lead Time, and Value Add Ratio formulas.
-- Calculate and display: Takt Time, Total Lead Time, Value Add Ratio, and identify any bottlenecks (C/T > Takt Time).
-- **For complex value streams (>8 process steps):** Split into 2 diagrams — one for material flow, one for information flow. Or break the line into logical segments (e.g., "Raw Material → Fabrication" and "Fabrication → Shipping"). Always explain the split to the user.
+1. Prepare the input JSON (see `references/svg-rendering.md` for the full schema)
+2. Run `python3 scripts/vsm_svg.py input.json output.svg`
+3. Convert: `rsvg-convert -w 1775 output.svg -o output.png`
+4. Send the PNG to the user via `MEDIA:/path/to/output.png`
+4. Also show a Markdown summary table with key metrics:
+   - Takt Time, Total Lead Time, Value Add Ratio
+   - Any bottlenecks (C/T > Takt Time)
 
 ### 3.5 Confirm Current State
 **Stop and ask the user to confirm the current state map is accurate.** Do not proceed to future state analysis until the user confirms. If the user points out errors, go back and fix them.
@@ -51,15 +72,19 @@ Generate a Mermaid diagram mapping the flow, followed immediately by a Markdown 
 ### 4. Future State Analysis
 Walk the user through Mike Rother's 8 Future State Design questions (from `references/lean-analysis.md`).
 - For each question, briefly explain the concept, then ask the user for their decision or preference.
-- When user data contains contradictions (e.g., C/T > Takt Time but user says no bottleneck), point out the specific conflict and ask which value is correct before continuing.
-- Identify which process improvements are needed (SMED, TPM, layout change, etc.) and note the expected impact on metrics.
-- **Quantify the expected impact:** e.g., "SMED on Bending: C/O 30min→10min" — don't just say "apply SMED", estimate the new value.
+- When user data contains contradictions, point out the specific conflict and ask which value is correct.
+- Identify which process improvements are needed (SMED, TPM, layout change, etc.) and note the expected impact.
+- **Quantify the expected impact:** e.g., "SMED on Bending: C/O 30min→10min" — don't just say "apply SMED".
 
 ### 5. Future State Rendering
-Output the revised Mermaid diagram and updated data boxes reflecting the future state.
-- Use Kaizen Burst nodes `{{...}}` to mark improvement points on the diagram.
-- Show updated Takt Time, Lead Time, Value Add Ratio.
-- **Show a before/after comparison table:**
+1. Update the input JSON with future state data:
+   - Modified process metrics (improved C/T, C/O, Uptime, etc.)
+   - Reduced inventory levels
+   - Add `future_state_kaizens` array for Kaizen bursts
+   - Set `pacemaker` to the pacemaker process name
+2. Run the script again to generate future-state SVG, then convert to PNG
+3. Send PNG via `MEDIA:`
+4. Show before/after comparison table:
 
 | Metric | Current State | Future State | Improvement |
 |--------|--------------|--------------|-------------|
@@ -68,18 +93,16 @@ Output the revised Mermaid diagram and updated data boxes reflecting the future 
 | Bottlenecks | N | M | -K |
 
 ### 6. Improvement Action Plan
-Based on the future state analysis, output a structured improvement action plan:
 
 | Priority | Action | Target Process | Expected Impact | Suggested Method |
 |----------|--------|---------------|-----------------|------------------|
 | 1 | ... | ... | C/O: Xhr → Ymin | SMED |
 | 2 | ... | ... | Uptime: A% → B% | TPM |
 
-**Priority scoring** — rank by this criteria:
+**Priority scoring** — rank by:
 1. **Eliminates bottleneck** (C/T > Takt → C/T < Takt) — highest priority
 2. **Largest Lead Time reduction** (targets biggest inventory pile)
-3. **Largest VA Ratio improvement** (combines #1 and #2)
+3. **Largest VA Ratio improvement**
 4. **Quick wins** (low effort, visible impact)
 
-- Reference specific Lean tools (SMED, TPM, 5S, Kanban, Heijunka) where applicable
-- Ask the user if they want to assign owners and timelines to each action
+- Ask the user if they want to assign owners and timelines
