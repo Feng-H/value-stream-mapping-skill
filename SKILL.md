@@ -143,6 +143,39 @@ After the initial map is generated, users will want to update it with real data 
 
 **Auto-save on first render:** After Step 3 (first Current State render), always save the JSON to `~/vsm-data/` with a descriptive name (e.g., `pump-truck-current.json`). Tell the user: "数据已保存到 ~/vsm-data/pump-truck-current.json，下次可以直接修改。"
 
+**Single owner principle:** Per Mike Rother's "Learning to See", VSM should be owned by one person (the Value Stream Manager). This person walks the process, collects data from various sources, and iterates on the map. Others only provide data — they don't edit the map. Do not design multi-user collaboration features. One person + AI + one JSON file is the correct workflow.
+
+### 8. Export & Share
+
+Users may want to share VSM data with colleagues who don't use this tool, or import it into other software (Excel, Minitab, PowerPoint, other VSM tools). Support these export formats:
+
+**When the user says:** "导出数据" / "export" / "导出Excel" / "分享给同事"
+
+**Available exports:**
+
+| Format | Command | Use Case |
+|--------|---------|----------|
+| JSON | Already saved in `~/vsm-data/` | Machine-readable, re-import into this tool, share with developers |
+| CSV | `python3 scripts/vsm_svg.py input.json export.csv` | Open in Excel, share data with colleagues, import into analysis tools |
+| SVG | `python3 scripts/vsm_svg.py input.json output.svg` | Vector image, embed in documents, edit in Inkscape/Illustrator |
+| PNG | `python3 scripts/vsm_svg.py input.json output.png` | Share via Feishu/WeChat, embed in PPT |
+
+**CSV format:**
+```csv
+type,name,index,ct,co,uptime,operators,defect,stations,inventory,inv_label
+process,下料,0,12,15,85,2,1.5,1,50,原材料
+process,折弯成型,1,18,20,82,1,2.0,1,92,WIP
+branch,机加,-,50,30,85,1,-,1,-,-
+```
+
+- Process rows: full data for each process step
+- Branch rows: branch process data (index = source process)
+- Inventory: each row has the inventory count and label between that process and the next
+- Header row for clarity, UTF-8 encoding
+- Colleagues can open in Excel and fill in real measurements, then send back for the owner to update
+
+**Implement CSV export in `vsm_svg.py`:** When output filename ends in `.csv`, generate a CSV file instead of SVG/PNG. Include all process and branch data in a flat table format.
+
 ### 8. Improvement Action Plan
 
 | Priority | Action | Target Process | Expected Impact | Suggested Method |

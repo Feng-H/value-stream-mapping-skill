@@ -12,7 +12,7 @@ import json
 import math
 import os
 import subprocess
-import sys
+import sys, json, os, csv
 from pathlib import Path
 
 # ── Layout constants ──────────────────────────────────────────────
@@ -548,16 +548,48 @@ def svg_to_png(svg_path, png_path, width=None):
     return True
 
 
+def export_csv(data, out_path):
+    """Export VSM data as CSV for sharing or importing into other tools."""
+    ct_unit = data.get("ct_unit", "min")
+    fields = ["type", "name", "index", f"ct({ct_unit})", "co(min)", "uptime(%)",
+              "operators", "defect(%)", "stations", "inventory", "inv_label"]
+    rows = []
+    for i, p in enumerate(data.get("processes", [])):
+        inv = data.get("inventories", [])[i] if i < len(data.get("inventories", [])) else ""
+        inv_l = data.get("inv_labels", [])[i] if i < len(data.get("inv_labels", [])) else ""
+        rows.append([
+            "process", p["name"], i,
+            p.get("ct", ""), p.get("co", ""), p.get("uptime", ""),
+            p.get("operators", ""), p.get("defect", ""), p.get("stations", 1),
+            inv, inv_l
+        ])
+    for b in data.get("branches", []):
+        rows.append([
+            "branch", b["label"], b.get("from", ""),
+            b.get("ct", ""), b.get("co", ""), b.get("uptime", ""),
+            "", "", "",
+            "", b.get("note", "")
+        ])
+    with open(out_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow(fields)
+        writer.writerows(rows)
+    return out_path
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python vsm_svg.py input.json [output.svg|output.png]", file=sys.stderr)
+        print("Usage: vsm_svg.py input.json [output.svg|.png|.csv]", file=sys.stderr)
         sys.exit(1)
     with open(sys.argv[1]) as f:
         data = json.load(f)
-    svg = generate(data)
     if len(sys.argv) >= 3:
         out = sys.argv[2]
-        if out.endswith(".png"):
+        if out.endswith(".csv"):
+            export_csv(data, out)
+            print(f"Saved CSV to {out}", file=sys.stderr)
+        elif out.endswith(".png"):
+            svg = generate(data)
             tmp = out + ".tmp.svg"
             Path(tmp).write_text(svg, encoding="utf-8")
             if svg_to_png(tmp, out):
@@ -566,10 +598,11 @@ def main():
             else:
                 print(f"Fallback: saved SVG to {tmp}", file=sys.stderr)
         else:
+            svg = generate(data)
             Path(out).write_text(svg, encoding="utf-8")
             print(f"Saved to {out}", file=sys.stderr)
     else:
-        print(svg)
+        print(generate(data))
 
 
 if __name__ == "__main__":
