@@ -35,12 +35,18 @@ python3 scripts/vsm_svg.py input.json output.png
       "uptime": 78,
       "operators": 3,
       "defect": 3.5,
-      "stations": 2
+      "stations": 2,
+      "batch_size": 30,
+      "avail_time_min": 480
     }
   ],
 
   "inventories": [92, 30, 15, 9, 46, 15, 6, 30, 15, 15, 61],
   "inv_labels": ["原材料", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "成品"],
+  "inv_types": ["raw", "wip", "wip", "wip", "wip", "wip", "wip", "wip", "wip", "wip", "fg"],
+
+  "supermarkets": [3, 7],
+  "finished_goods": "supermarket",
 
   "branches": [
     {"label": "机加", "from": 0, "to": 3, "ct": 50, "co": 30, "uptime": 85, "note": "~30%零件"},
@@ -81,8 +87,13 @@ python3 scripts/vsm_svg.py input.json output.png
 | `processes[].operators` | No | Number of operators |
 | `processes[].defect` | No | Defect rate percentage |
 | `processes[].stations` | No | Number of parallel identical stations. Effective CT = ct / stations. Used for bottleneck detection. |
+| `processes[].batch_size` | No | Batch size (units per run). Required for Effective CT calculation when C/O > 10min. |
+| `processes[].avail_time_min` | No | Available working time per shift in minutes (net, after breaks). Defaults to global `shift_hours*60 - break_min` if not set. |
 | `inventories` | Yes | Inventory counts between steps. Length must be `len(processes) + 1` |
 | `inv_labels` | No | Labels for each inventory point. Same length as `inventories` |
+| `inv_types` | No | Type of each inventory point: `"raw"`, `"wip"`, `"fg"` (finished goods). Same length as `inventories`. Used to differentiate raw material, work-in-process, and finished goods inventory on the map. |
+| `supermarkets` | No | Array of inventory indices where supermarket pull systems are located. These inventory triangles will be rendered with a supermarket icon (rectangle with zigzag top). |
+| `finished_goods` | No | `"supermarket"` or `"direct"`. How finished goods flow to customer. `"supermarket"` draws a supermarket icon before customer; `"direct"` draws a direct arrow. Default: `"direct"`. |
 | `branches` | No | Array of branch objects. Rendered above main flow line. |
 | `branches[].label` | Yes | Branch name (e.g., "机加") |
 | `branches[].from` | No | Source process index (0-based). Presence makes this a from-branch. |
@@ -91,7 +102,7 @@ python3 scripts/vsm_svg.py input.json output.png
 | `branches[].co` | No | Branch process C/O (displayed in box) |
 | `branches[].uptime` | No | Branch process uptime (displayed in box) |
 | `branches[].note` | No | Additional note below the branch box |
-| `pacemaker` | No | Name of pacemaker process. Shows "P" badge. Future state only. |
+| `pacemaker` | No | Name of pacemaker process. Shows "P" badge. Can be set on both current and future state maps — identify where scheduling instructions are currently sent. |
 | `future_state_kaizens` | No | Array of Kaizen burst objects. Future state only. |
 | `future_state_kaizens[].process` | Yes | Target process name (must match a process) |
 | `future_state_kaizens[].text` | Yes | Burst text. Use `\n` for multiline. |
@@ -111,7 +122,9 @@ python3 scripts/vsm_svg.py input.json output.png
 | **Process Box** | White box with grey header. Shows C/T, C/O (if >0), Stations (if >1), Uptime, Operators, Defect. |
 | **Bottleneck** | Process box with **red border** when effective C/T (ct ÷ stations) > Takt Time |
 | **Pacemaker** | Blue "P" circle badge on the process box corner |
-| **Inventory** | Grey downward triangle with count below |
+| **Inventory** | Grey downward triangle with count below. If the inventory index is in `supermarkets[]`, renders as a supermarket icon (rectangle with zigzag/roof top) instead of a triangle. |
+| **Supermarket** | Rectangle with a zigzag/roof top, containing inventory count. Marks a controlled buffer where upstream produces to replenish (pull system). Placed at inventory points listed in `supermarkets[]`. |
+| **Finished Goods** | Before customer: if `finished_goods: "supermarket"`, draws a supermarket icon; if `"direct"` (default), normal arrow. |
 | **Supplier** | Blue factory icon (building + roof) |
 | **Customer** | Green factory icon (building + windows) |
 | **Branch (from)** | Purple box above main flow, dashed lines from source → box → merge target |

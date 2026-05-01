@@ -70,16 +70,28 @@ Ask the user to define the scope of the map (e.g., door-to-door, single line, mu
 - Monthly/weekly/daily demand
 - Working days per month
 - Shifts per day and net available time per shift (exclude breaks/lunch)
+- **Batch size** (units per run) and **available_time_min** per shift (net minutes; if not provided, compute as `shift_hours*60 - break_min`)
 
 **Then collect process steps and metrics:**
 - If they provide a brain-dump, extract it into a structured table.
 - **Immediately show the table to the user for confirmation** — do not hide data in context. This prevents context compression loss and gives the user a chance to correct errors early.
-- For each process step, collect: Cycle Time (C/T), Changeover Time (C/O), Uptime, Number of Operators, Defect Rate, Number of Stations (parallel identical stations).
-- **Effective CT = C/T ÷ Stations** — this is what matters for bottleneck comparison against Takt Time.
-- Use `ct_unit: "min"` for heavy industry / equipment manufacturing (values are cleaner), `"s"` for high-speed assembly.
-- For inventory between steps: ask for WIP count or days of supply.
-- If unknown, mark as "待测量 (TBM)" — do not assume values.
+- **Identify the pacemaker process** — ask "哪个工序接收排产指令？" and record its name.
+- **Listen first, structure later.** When the user starts describing the process verbally:
+  - Let them finish their description without interrupting
+  - Note branching/merge points, dual-source components, and re-entry loops
+  - After they finish, present a structured summary for confirmation
+  - Ask about anything ambiguous (e.g., "机加后的零件回到焊接，是汇入主焊接线还是单独再焊一次？")
+- **Branch handling:** The SVG renderer supports two types of branches via the `branches[]` array:
+  - **From-branches** (has `from` + `to` process indices): process-to-process parallel paths rendered above the main flow line (e.g., 机加: 部分零件从下料分流到机加工再汇入焊接)
+  - **External inputs** (has `to` index only): external suppliers converging into a main process (e.g., 外购底盘、外购件汇入整体组装)
+- **Pitfall:** When the user says "I don't have exact data", offer to estimate based on industry benchmarks, generate the map with estimated values, and flag them for the user to correct. Mark uncertain values clearly (e.g., "行业估算" note on the diagram or in the data table).
+
+- **Batch handling:** If the user says "I don't have exact data", offer to estimate based on industry benchmarks, generate the map with estimated values, and flag them for correction. Mark uncertain values clearly (e.g., "行业估算" note on the diagram or in the data table).
+
+- **Info flow:** Ask how production scheduling works: "生产计划是怎么下达到各道工序的？" (push vs pull). Record the info flow as `info_flow.signals` array (e.g., manual, kanban). Also ask about supermarket locations: "在哪些工序之间设置看板/超市？" and record inventory indices in `supermarkets[]`. Also ask about finished goods flow: "成品是直发客户还是放超市？" and record as `finished_goods: "supermarket"` or `direct`.
+
 - **Run data validation immediately after collection** (see `references/lean-analysis.md` Data Validation Rules). Flag any contradictions before rendering.
+- **Notify the user** that **batch_size** and **available_time** will improve the accuracy of bottleneck detection.
 
 ### 3. Current State Rendering
 
@@ -100,6 +112,7 @@ Walk the user through Mike Rother's 8 Future State Design questions (from `refer
 - When user data contains contradictions, point out the specific conflict and ask which value is correct.
 - Identify which process improvements are needed (SMED, TPM, layout change, etc.) and note the expected impact.
 - **Quantify the expected impact:** e.g., "SMED on Bending: C/O 30min→10min" — don't just say "apply SMED".
+- **Pacemaker clarification:** The pacemaker (节拍工序) is the single point that receives production scheduling instructions. Identify it in the current state first (Step 2), then confirm if it changes in the future state.
 
 ### 5. Future State Rendering
 1. Update the input JSON with future state data:
