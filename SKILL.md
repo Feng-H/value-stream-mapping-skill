@@ -1,6 +1,6 @@
 ---
 name: value-stream-mapping
-version: 4.0.0
+version: 4.2.0
 description: Draw, create, and analyze Value Stream Maps (VSM) with professional SVG rendering. Supports linear flows, branch/merge processes, and external input suppliers. Use when a user wants to map a process, find bottlenecks, calculate Takt Time, or design a Future State Map based on Lean principles.
 tags: [lean, vsm, value-stream, manufacturing, process-optimization, svg]
 category: operations
@@ -117,7 +117,33 @@ Walk the user through Mike Rother's 8 Future State Design questions (from `refer
 | Value Add Ratio | A% | B% | +C% |
 | Bottlenecks | N | M | -K |
 
-### 6. Improvement Action Plan
+### 7. Iterate & Refine (Load Existing VSM)
+
+After the initial map is generated, users will want to update it with real data or modify the flow. **The JSON file is the persistent source of truth** — the user never needs to edit it manually.
+
+**When the user says something like:**
+- "加载泵车那条线" / "打开上次的价值流图"
+- "焊接的CT改成实测值45min"
+- "加一道探伤工序在焊接后面"
+- "去掉机加分支"
+
+**Do this:**
+
+1. **Locate the JSON** — ask the user for the file path, or check `~/vsm-data/` (the default storage directory). If no directory exists, create it and suggest saving there for future access.
+2. **Show current state** — read the JSON, display a compact summary table of current processes and metrics so the user knows what they're working with.
+3. **Apply changes** — modify the JSON based on user's request:
+   - **Data update**: change specific fields (ct, co, uptime, inventory, etc.)
+   - **Add process**: insert into `processes[]`, adjust `inventories[]` and `inv_labels[]` length, update any `branches[].from/to` indices that shift
+   - **Remove process**: delete from `processes[]`, adjust inventory arrays, fix branch indices
+   - **Add/remove branch**: modify `branches[]` array
+   - **Structural change** (e.g., split a process, merge two): adjust all affected arrays and indices
+4. **Save a versioned copy** before overwriting: `vsm-name-YYYYMMDD-HHMMSS.json` — so the user can always go back
+5. **Re-render** — run `vsm_svg.py` on the updated JSON, convert to PNG, send to user
+6. **Show what changed** — brief diff: "焊接 CT: 100min → 45min, 新增: 探伤(CT 15min), 移除: 无"
+
+**Auto-save on first render:** After Step 3 (first Current State render), always save the JSON to `~/vsm-data/` with a descriptive name (e.g., `pump-truck-current.json`). Tell the user: "数据已保存到 ~/vsm-data/pump-truck-current.json，下次可以直接修改。"
+
+### 8. Improvement Action Plan
 
 | Priority | Action | Target Process | Expected Impact | Suggested Method |
 |----------|--------|---------------|-----------------|------------------|
