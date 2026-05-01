@@ -1,38 +1,49 @@
 ---
 name: value-stream-mapping
-version: 3.0.0
-description: Draw, create, and analyze Value Stream Maps (VSM) with professional SVG rendering. Use when a user wants to map a process, find bottlenecks, calculate Takt Time, or design a Future State Map based on Lean principles.
+version: 4.0.0
+description: Draw, create, and analyze Value Stream Maps (VSM) with professional SVG rendering. Supports linear flows, branch/merge processes, and external input suppliers. Use when a user wants to map a process, find bottlenecks, calculate Takt Time, or design a Future State Map based on Lean principles.
 tags: [lean, vsm, value-stream, manufacturing, process-optimization, svg]
 category: operations
 linked_files:
   - references/lean-analysis.md
   - references/svg-rendering.md
   - scripts/vsm_svg.py
+  - templates/pump-truck-example.json
 ---
 
 # Value Stream Mapping Skill
 
-This skill guides you to act as an expert Lean Consultant, producing professional Value Stream Maps with standard Lean icons (process data boxes, inventory triangles, timeline bars, Kaizen bursts) rendered as SVG.
+This skill guides you to act as an expert Lean Consultant, producing professional Value Stream Maps with standard Lean icons (process data boxes, inventory triangles, timeline bars, Kaizen bursts, branch/merge flows) rendered as SVG.
 
 ## Rendering Engine
 
 VSM diagrams are generated via `scripts/vsm_svg.py` — a zero-dependency Python script that outputs SVG files.
 
 **Before rendering (Step 3 and Step 5), you MUST:**
-1. Read `references/svg-rendering.md` for the SVG conventions and visual elements
+1. Read `references/svg-rendering.md` for the JSON schema and visual elements
 2. Read `references/lean-analysis.md` for Takt Time, Lead Time, and Value Add Ratio formulas
 
 **To generate a VSM:**
 ```bash
+# PNG output (auto-converts, recommended for Feishu)
+python3 scripts/vsm_svg.py input.json output.png
+
+# Or SVG → PNG in two steps
 python3 scripts/vsm_svg.py input.json output.svg
 rsvg-convert -w 1775 output.svg -o output.png
 ```
 
-The input JSON structure is documented in `references/svg-rendering.md`.
+The input JSON structure is documented in `references/svg-rendering.md`. A complete example is in `templates/pump-truck-example.json`.
 
-**IMPORTANT:** Feishu does not support SVG attachments. Always convert to PNG with `rsvg-convert` before sending via `MEDIA:`. Dependency: `librsvg2-bin` (`sudo apt-get install -y librsvg2-bin`).
+**IMPORTANT:** Feishu does not support SVG attachments. Always convert to PNG before sending via `MEDIA:`. Dependency: `librsvg2-bin` (`sudo apt-get install -y librsvg2-bin`).
 
 **User preference:** Do not over-verify SVG output programmatically. Generate, convert to PNG, send to user. They will visually inspect and provide feedback.
+
+### Key Features (v4.0)
+- **Branch flows**: `branches[]` array supports process-to-process branches (e.g., 机加 from 下料 to 焊接) and external input branches (e.g., 外购底盘 to 整体组装)
+- **Multi-station**: `stations` field on processes shows effective CT per station (C/T ÷ stations), which is used for bottleneck detection
+- **CT unit toggle**: `ct_unit` field — `"min"` (default, better for heavy industry) or `"s"`
+- **Dynamic layout**: SVG height auto-adjusts for branch count
 
 ## Workflow
 
@@ -40,6 +51,18 @@ Follow these steps strictly:
 
 ### 1. Scope Definition
 Ask the user to define the scope of the map (e.g., door-to-door, single line, multi-facility) and the target product family. If they have multiple product families, ask them to start with the highest-volume one — multi-family VSMs add complexity (see `references/lean-analysis.md` for mixed-model guidance). Do not proceed until this is clear.
+
+**Listen first, structure later.** When the user starts describing the process verbally:
+- Let them finish their description without interrupting
+- Note branching/merge points, dual-source components, and re-entry loops
+- After they finish, present a structured summary for confirmation
+- Ask about anything ambiguous (e.g., "机加后的零件回到焊接，是汇入主焊接线还是单独再焊一次？")
+
+**Branch handling:** The SVG renderer supports two types of branches via the `branches[]` array:
+- **From-branches** (has `from` + `to` process indices): process-to-process parallel paths rendered above the main flow line (e.g., 机加: 部分零件从下料分流到机加工再汇入焊接)
+- **External inputs** (has `to` index only): external suppliers converging into a main process (e.g., 外购底盘、外购件汇入整体组装)
+
+> **Pitfall:** When the user says "I don't have exact data", offer to estimate based on industry benchmarks, generate the map with estimated values, and flag them for the user to correct. Mark uncertain values clearly (e.g., "行业估算" note on the diagram or in the data table).
 
 ### 2. Current State Extraction
 
@@ -51,7 +74,9 @@ Ask the user to define the scope of the map (e.g., door-to-door, single line, mu
 **Then collect process steps and metrics:**
 - If they provide a brain-dump, extract it into a structured table.
 - **Immediately show the table to the user for confirmation** — do not hide data in context. This prevents context compression loss and gives the user a chance to correct errors early.
-- For each process step, collect: Cycle Time (C/T), Changeover Time (C/O), Uptime, Number of Operators, Defect Rate.
+- For each process step, collect: Cycle Time (C/T), Changeover Time (C/O), Uptime, Number of Operators, Defect Rate, Number of Stations (parallel identical stations).
+- **Effective CT = C/T ÷ Stations** — this is what matters for bottleneck comparison against Takt Time.
+- Use `ct_unit: "min"` for heavy industry / equipment manufacturing (values are cleaner), `"s"` for high-speed assembly.
 - For inventory between steps: ask for WIP count or days of supply.
 - If unknown, mark as "待测量 (TBM)" — do not assume values.
 - **Run data validation immediately after collection** (see `references/lean-analysis.md` Data Validation Rules). Flag any contradictions before rendering.

@@ -1,0 +1,43 @@
+{
+  "title": "价值流图(现状) — 泵车生产线",
+  "supplier": "钢材/焊丝/油漆",
+  "customer": "终端客户",
+  "monthly_demand": 800,
+  "working_days": 26,
+  "shifts": 2,
+  "shift_hours": 12,
+  "break_min": 120,
+  "ct_unit": "min",
+
+  "processes": [
+    {"name": "下料",      "ct": 45,  "co": 20, "uptime": 85, "operators": 2, "defect": 1.5, "stations": 2},
+    {"name": "折弯成型",  "ct": 30,  "co": 15, "uptime": 90, "operators": 1, "defect": 1.0, "stations": 1},
+    {"name": "预处理打磨","ct": 20,  "co": 0,  "uptime": 95, "operators": 1, "defect": 0,   "stations": 1},
+    {"name": "焊接",      "ct": 100, "co": 40, "uptime": 78, "operators": 3, "defect": 3.5, "stations": 2},
+    {"name": "部件组装",  "ct": 70,  "co": 20, "uptime": 88, "operators": 2, "defect": 1.5, "stations": 2},
+    {"name": "涂装前打磨","ct": 25,  "co": 0,  "uptime": 95, "operators": 1, "defect": 0,   "stations": 1},
+    {"name": "涂装",      "ct": 120, "co": 30, "uptime": 85, "operators": 2, "defect": 2.0, "stations": 3},
+    {"name": "整体组装",  "ct": 240, "co": 30, "uptime": 88, "operators": 5, "defect": 1.0, "stations": 6},
+    {"name": "整体涂装",  "ct": 60,  "co": 15, "uptime": 90, "operators": 2, "defect": 0.5, "stations": 2},
+    {"name": "调试",      "ct": 100, "co": 0,  "uptime": 92, "operators": 3, "defect": 0.5, "stations": 3}
+  ],
+
+  "inventories": [92, 30, 15, 9, 46, 15, 6, 30, 15, 15, 61],
+  "inv_labels": ["原材料", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "WIP", "成品"],
+
+  "branches": [
+    {"label": "机加", "from": 0, "to": 3, "ct": 50, "co": 30, "uptime": 85, "note": "~30%零件"},
+    {"label": "自制底盘", "to": 7, "ct": 180, "co": 60, "uptime": 82, "note": "按泵车要求生产"},
+    {"label": "外购底盘", "to": 7, "note": "改制60min, 提前期5天"},
+    {"label": "外购件", "to": 7, "note": "输送管/管线/电控/液压件"}
+  ],
+
+  "info_flow": {
+    "schedule_from": "生产计划",
+    "demand_label": "月产800台",
+    "signals": [
+      {"type": "manual", "to": "焊接", "label": "排产指令"},
+      {"type": "manual", "to": "整体组装", "label": "装配计划"}
+    ]
+  }
+}
